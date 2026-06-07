@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JobMatch — Your Matched Jobs</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dark:#0D1117;--dark-mid:#161B22;--dark-light:#21262D;
+  --green:#2EA043;--green-light:#3FB950;--green-glow:rgba(46,160,67,0.15);
+  --white:#FFFFFF;--text:#C9D1D9;--muted:#8B949E;
+  --border:rgba(46,160,67,0.25);--error:#f85149;--success:#2EA043;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;line-height:1.6}
+nav{padding:1.2rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--dark);z-index:100}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--green)}
+.logo span{color:var(--white)}
+nav a{font-size:.82rem;color:var(--green);text-decoration:none}
+
+/* LOADING */
+.loading-wrap{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center}
+.load-icon{font-size:2.5rem;margin-bottom:1rem}
+.load-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);margin-bottom:.5rem}
+.load-msg{color:var(--muted);font-size:.9rem;max-width:400px}
+.prog-wrap{background:var(--dark-light);border-radius:100px;height:5px;margin:1.75rem 0 .75rem;width:300px;overflow:hidden}
+.prog-fill{height:100%;background:linear-gradient(90deg,var(--green),var(--green-light));border-radius:100px;transition:width .8s ease;width:0%}
+.prog-lbl{font-size:.78rem;color:var(--muted)}
+.slist{list-style:none;text-align:left;margin:1.5rem 0 0;width:300px}
+.sitem{display:flex;align-items:center;gap:.65rem;padding:.5rem 0;font-size:.86rem;border-bottom:1px solid rgba(46,160,67,.08);color:var(--muted);transition:color .3s}
+.sitem:last-child{border-bottom:none}
+.sitem.done{color:var(--text)}
+.sitem.active{color:var(--green)}
+.sdot{width:20px;height:20px;border-radius:50%;background:var(--dark-light);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:.62rem;flex-shrink:0;transition:all .3s}
+.sitem.done .sdot{background:var(--success);border-color:var(--success);color:#fff}
+.sitem.active .sdot{border-color:var(--green)}
+.sspin{width:10px;height:10px;border:2px solid rgba(46,160,67,.3);border-top-color:var(--green);border-radius:50%;animation:sp .7s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* RESULTS */
+.results-wrap{max-width:800px;margin:0 auto;padding:2rem 1.5rem 4rem}
+.results-header{margin-bottom:2rem}
+.results-header h1{font-family:'Playfair Display',serif;font-size:1.75rem;color:var(--white);margin-bottom:.4rem}
+.results-header p{color:var(--muted);font-size:.9rem}
+.tags{display:flex;flex-wrap:wrap;gap:.4rem;margin-top:.75rem}
+.tag{background:var(--dark-light);border:1px solid var(--border);border-radius:100px;padding:.2rem .7rem;font-size:.75rem;color:var(--green)}
+
+/* JOB CARD */
+.job-card{background:var(--dark-mid);border:1px solid var(--border);border-radius:12px;padding:1.25rem 1.5rem;margin-bottom:.85rem;transition:border-color .2s}
+.job-card:hover{border-color:var(--green)}
+.job-top{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:.6rem}
+.job-title{font-weight:700;font-size:1rem;color:var(--white);margin-bottom:.2rem}
+.job-company{font-size:.82rem;color:var(--muted)}
+.job-source{background:var(--green-glow);border:1px solid var(--border);color:var(--green);font-size:.68rem;font-weight:600;padding:.2rem .55rem;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.job-summary{font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:.75rem}
+.job-match{font-size:.8rem;color:var(--green);margin-bottom:.75rem;font-style:italic}
+.job-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
+.job-posted{font-size:.75rem;color:var(--muted)}
+.job-link{display:inline-flex;align-items:center;gap:.4rem;background:var(--green);color:var(--dark);padding:.45rem 1rem;border-radius:6px;font-size:.82rem;font-weight:700;text-decoration:none;transition:all .2s}
+.job-link:hover{background:var(--green-light);transform:translateY(-1px)}
+
+/* EMPTY */
+.empty{text-align:center;padding:4rem 2rem;color:var(--muted)}
+.empty-icon{font-size:2.5rem;margin-bottom:1rem}
+
+/* ERROR */
+.error-wrap{min-height:80vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center}
+.err-icon{font-size:2.5rem;margin-bottom:1rem}
+.err-title{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--white);margin-bottom:.5rem}
+.err-msg{color:var(--muted);font-size:.9rem;max-width:400px;margin-bottom:1.5rem}
+.err-detail{background:rgba(248,81,73,.08);border:1px solid rgba(248,81,73,.25);border-radius:8px;padding:.85rem 1rem;color:var(--error);font-size:.82rem;max-width:400px;margin-bottom:1.5rem;text-align:left}
+.btn-back{display:inline-block;padding:.7rem 1.5rem;background:var(--green);color:var(--dark);border-radius:8px;font-weight:700;text-decoration:none;font-size:.9rem}
+
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Job<span>Match</span></div>
+  <a href="/">← New Search</a>
+</nav>
+
+<!-- LOADING -->
+<div class="loading-wrap" id="st-loading">
+  <div class="load-icon">🔍</div>
+  <div class="load-title">Searching Jobs For You</div>
+  <div class="load-msg">Please stay on this page while we verify your payment and scan all job boards.</div>
+  <div class="prog-wrap"><div class="prog-fill" id="progFill"></div></div>
+  <div class="prog-lbl" id="progLbl">Initialising…</div>
+  <ul class="slist">
+    <li class="sitem" id="si-pay"><div class="sdot" id="sd-pay">1</div>Verifying payment</li>
+    <li class="sitem" id="si-scan"><div class="sdot" id="sd-scan">2</div>Scanning job boards</li>
+    <li class="sitem" id="si-rank"><div class="sdot" id="sd-rank">3</div>AI ranking your matches</li>
+  </ul>
+</div>
+
+<!-- RESULTS -->
+<div id="st-results" class="hidden">
+  <div class="results-wrap">
+    <div class="results-header">
+      <h1>Your Job Matches</h1>
+      <p id="resultsSummary"></p>
+      <div class="tags" id="keywordTags"></div>
+    </div>
+    <div id="jobList"></div>
+    <div class="empty hidden" id="emptyState">
+      <div class="empty-icon">😔</div>
+      <p>No matching jobs found right now.</p>
+      <p style="margin-top:.5rem;font-size:.85rem">New jobs are posted daily — try again tomorrow or broaden your CV skills section.</p>
+      <a href="/" style="display:inline-block;margin-top:1.5rem;color:var(--green)">← Try Another Search</a>
+    </div>
+  </div>
+</div>
+
+<!-- ERROR -->
+<div id="st-error" class="hidden">
+  <div class="error-wrap">
+    <div class="err-icon">❌</div>
+    <div class="err-title">Something Went Wrong</div>
+    <div class="err-msg">If your payment went through, contact us and we'll sort it out.</div>
+    <div class="err-detail" id="errDetail"></div>
+    <a href="/" class="btn-back">← Start Again</a>
+  </div>
+</div>
+
+<script>
+function setProgress(pct, lbl) {
+  document.getElementById('progFill').style.width = pct + '%';
+  document.getElementById('progLbl').textContent = lbl;
+}
+function setStep(id, state) {
+  const item = document.getElementById('si-' + id);
+  const dot  = document.getElementById('sd-' + id);
+  item.className = 'sitem ' + (state === 'done' ? 'done' : state === 'active' ? 'active' : '');
+  dot.innerHTML  = state === 'done' ? '✓' : state === 'active' ? '<div class="sspin"></div>' : dot.textContent;
+}
+function showState(s) {
+  ['loading','results','error'].forEach(x => document.getElementById('st-'+x).classList.toggle('hidden', x !== s));
+}
+function showError(msg) {
+  document.getElementById('errDetail').textContent = msg;
+  showState('error');
+}
+
+function renderJobs(jobs, keywords, message) {
+  document.getElementById('resultsSummary').textContent = message;
+
+  // Keyword tags
+  const tags = document.getElementById('keywordTags');
+  const kws = (keywords.search_keywords || []).concat(keywords.job_titles || []).slice(0, 8);
+  kws.forEach(kw => {
+    const t = document.createElement('span');
+    t.className = 'tag';
+    t.textContent = kw;
+    tags.appendChild(t);
+  });
+
+  if (!jobs || jobs.length === 0) {
+    document.getElementById('emptyState').classList.remove('hidden');
+    showState('results');
+    return;
+  }
+
+  const list = document.getElementById('jobList');
+  jobs.forEach(job => {
+    const card = document.createElement('div');
+    card.className = 'job-card';
+    card.innerHTML = `
+      <div class="job-top">
+        <div>
+          <div class="job-title">${job.title || 'Job Opening'}</div>
+          <div class="job-company">${job.company || 'Company not listed'}</div>
+        </div>
+        <span class="job-source">${job.source || ''}</span>
+      </div>
+      ${job.match_reason ? `<div class="job-match">✓ ${job.match_reason}</div>` : ''}
+      ${job.summary ? `<div class="job-summary">${job.summary}</div>` : ''}
+      <div class="job-footer">
+        <span class="job-posted">Posted: ${job.posted || 'Recently'}</span>
+        <a href="${job.link}" target="_blank" rel="noopener" class="job-link">Apply Now →</a>
+      </div>
+    `;
+    list.appendChild(card);
+  });
+
+  showState('results');
+}
+
+async function main() {
+  const params   = new URLSearchParams(window.location.search);
+  const ref      = params.get('reference') || params.get('trxref') || '';
+  const cvText   = sessionStorage.getItem('jm_cv') || '';
+  const keywords = JSON.parse(sessionStorage.getItem('jm_keywords') || '{}');
+
+  if (!ref) { showError('No payment reference found. Please complete payment from the main page.'); return; }
+  if (!cvText) { showError('CV data not found. Please go back and start again.'); return; }
+
+  setStep('pay', 'active');
+  setProgress(20, 'Verifying payment…');
+
+  let data;
+  try {
+    const res = await fetch('/api/match', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ reference: ref, cv_text: cvText, keywords })
+    });
+    data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Matching failed.');
+  } catch(err) {
+    showError(err.message);
+    return;
+  }
+
+  setStep('pay', 'done');
+  setStep('scan', 'active');
+  setProgress(60, 'Scanning job boards…');
+  await new Promise(r => setTimeout(r, 600));
+  setStep('scan', 'done');
+  setStep('rank', 'active');
+  setProgress(85, 'AI ranking your matches…');
+  await new Promise(r => setTimeout(r, 500));
+  setStep('rank', 'done');
+  setProgress(100, 'Done!');
+
+  // Clear session
+  sessionStorage.removeItem('jm_cv');
+  sessionStorage.removeItem('jm_keywords');
+
+  await new Promise(r => setTimeout(r, 400));
+  renderJobs(data.jobs, data.keywords || keywords, data.message || '');
+}
+
+window.addEventListener('load', main);
+</script>
+</body>
+</html>

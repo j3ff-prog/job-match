@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>JobMatch — AI Job Matching for Kenyan Job Seekers</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --dark:#0D1117;--dark-mid:#161B22;--dark-light:#21262D;
+  --green:#2EA043;--green-light:#3FB950;--green-glow:rgba(46,160,67,0.15);
+  --white:#FFFFFF;--text:#C9D1D9;--muted:#8B949E;
+  --border:rgba(46,160,67,0.25);--error:#f85149;--success:#2EA043;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--dark);color:var(--text);min-height:100vh;line-height:1.6}
+
+/* NAV */
+nav{padding:1.2rem 2rem;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--dark);z-index:100}
+.logo{font-family:'Playfair Display',serif;font-size:1.5rem;color:var(--green);letter-spacing:.03em}
+.logo span{color:var(--white)}
+nav small{font-size:.82rem;color:var(--muted)}
+
+/* HERO */
+.hero{text-align:center;padding:5rem 1.5rem 3rem;max-width:700px;margin:0 auto}
+.badge{display:inline-block;background:var(--green-glow);border:1px solid var(--border);color:var(--green);font-size:.75rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;padding:.3rem .9rem;border-radius:100px;margin-bottom:1.25rem}
+.hero h1{font-family:'Playfair Display',serif;font-size:clamp(2rem,5vw,3.2rem);line-height:1.2;color:var(--white);margin-bottom:1rem}
+.hero h1 em{color:var(--green);font-style:normal}
+.hero p{font-size:1rem;color:var(--muted);max-width:520px;margin:0 auto 0.5rem}
+
+/* HOW IT WORKS */
+.how{display:flex;justify-content:center;gap:.4rem;flex-wrap:wrap;padding:1rem 1rem 0;max-width:600px;margin:0 auto}
+.hw{display:flex;align-items:center;gap:.4rem;font-size:.8rem;color:var(--muted)}
+.hwn{width:22px;height:22px;background:var(--green);color:var(--dark);border-radius:50%;font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.arr{color:var(--border);font-size:.8rem}
+
+/* CARD */
+.card{background:var(--dark-mid);border:1px solid var(--border);border-radius:16px;padding:2.25rem 2rem;max-width:680px;margin:3rem auto;width:calc(100% - 2rem)}
+@media(max-width:600px){.card{padding:1.5rem 1.125rem}}
+
+.flabel{display:block;font-size:.78rem;font-weight:600;color:var(--green);letter-spacing:.06em;text-transform:uppercase;margin-bottom:.5rem}
+.fhint{font-size:.76rem;color:var(--muted);margin-bottom:.6rem}
+.fsec{margin-bottom:1.5rem}
+
+/* TABS */
+.tabs{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:.75rem}
+.tab{flex:1;padding:.55rem;background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:.82rem;font-weight:500;cursor:pointer;transition:all .2s}
+.tab.on{background:var(--green);color:var(--dark);font-weight:600}
+.tab:not(.on):hover{background:var(--green-glow);color:var(--text)}
+
+/* DROP ZONE */
+.drop{border:2px dashed var(--border);border-radius:10px;padding:2rem 1rem;text-align:center;cursor:pointer;transition:all .2s;position:relative}
+.drop:hover,.drop.over{border-color:var(--green);background:var(--green-glow)}
+.drop input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop p{color:var(--muted);font-size:.84rem}
+.drop strong{color:var(--green)}
+.file-ok{color:var(--success)!important;font-weight:600;margin-top:.4rem;font-size:.82rem}
+
+/* TEXTAREA */
+textarea{width:100%;background:var(--dark-light);border:1px solid var(--border);border-radius:10px;padding:.85rem;color:var(--text);font-family:'DM Sans',sans-serif;font-size:.86rem;resize:vertical;line-height:1.6;transition:border-color .2s}
+textarea:focus{outline:none;border-color:var(--green)}
+textarea::placeholder{color:var(--muted)}
+
+/* PRICE BOX */
+.price-box{background:var(--green-glow);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem}
+.price-left p{font-size:.82rem;color:var(--muted)}
+.price-left strong{font-size:1.1rem;color:var(--white)}
+.price-amount{font-family:'Playfair Display',serif;font-size:2rem;color:var(--green);font-weight:700}
+
+/* BUTTON */
+.btn{width:100%;padding:.95rem;background:var(--green);color:var(--dark);border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:.98rem;font-weight:700;cursor:pointer;transition:all .2s;letter-spacing:.02em}
+.btn:hover:not(:disabled){background:var(--green-light);transform:translateY(-1px)}
+.btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+.err{background:rgba(248,81,73,.1);border:1px solid rgba(248,81,73,.3);border-radius:8px;padding:.75rem 1rem;color:var(--error);font-size:.84rem;margin-top:.75rem;display:none}
+.err.show{display:block}
+.spin{display:inline-block;width:15px;height:15px;border:2.5px solid rgba(13,17,23,.3);border-top-color:var(--dark);border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:.4rem}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+/* TRUST */
+.trust{text-align:center;padding:.5rem 1.5rem 3rem;color:var(--muted);font-size:.8rem}
+.trust span{margin:0 .6rem}
+.trust strong{color:var(--text)}
+
+footer{border-top:1px solid var(--border);text-align:center;padding:1.25rem;font-size:.78rem;color:var(--muted)}
+footer a{color:var(--green);text-decoration:none}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Job<span>Match</span></div>
+  <small>AI-powered · Kenyan-built</small>
+</nav>
+
+<div class="hero">
+  <div class="badge">🇰🇪 For Kenyan Job Seekers</div>
+  <h1>Stop Wasting Hours<br/><em>Hunting for Jobs</em></h1>
+  <p>Paste your CV — our AI scans BrighterMonday, MyJobMag, JobWebKenya and more, then shows you only the jobs that actually match your skills.</p>
+</div>
+
+<div class="how">
+  <div class="hw"><div class="hwn">1</div>Paste your CV</div>
+  <div class="arr">›</div>
+  <div class="hw"><div class="hwn">2</div>Pay KES 49</div>
+  <div class="arr">›</div>
+  <div class="hw"><div class="hwn">3</div>Get matched jobs instantly</div>
+</div>
+
+<div class="card">
+
+  <div class="fsec">
+    <label class="flabel">Your CV</label>
+    <p class="fhint">Upload your CV file or paste the text — the more detail, the better the matches.</p>
+    <div class="tabs">
+      <button class="tab on" onclick="switchTab('upload',this)">📎 Upload File</button>
+      <button class="tab" onclick="switchTab('paste',this)">📋 Paste Text</button>
+    </div>
+
+    <div id="tab-upload">
+      <div class="drop" id="dropZone">
+        <input type="file" id="cvFile" accept=".pdf,.docx,.txt"/>
+        <div style="font-size:1.75rem;margin-bottom:.5rem">📄</div>
+        <p><strong>Click to upload</strong> or drag & drop</p>
+        <p>PDF, DOCX or TXT — max 5MB</p>
+        <p class="file-ok hidden" id="fileLabel"></p>
+      </div>
+    </div>
+
+    <div id="tab-paste" class="hidden">
+      <textarea id="cvText" rows="10" placeholder="Paste your full CV here — work experience, skills, education..."></textarea>
+    </div>
+  </div>
+
+  <div class="price-box">
+    <div class="price-left">
+      <strong>One Search — All Job Boards</strong>
+      <p>BrighterMonday · MyJobMag · JobWebKenya · RecruitmentRoom · NGO Jobs + more</p>
+    </div>
+    <div class="price-amount">KES 49</div>
+  </div>
+
+  <button class="btn" id="searchBtn" onclick="handleSearch()">
+    Find My Matching Jobs →
+  </button>
+  <div class="err" id="errBox"></div>
+
+</div>
+
+<div class="trust">
+  <span>🔍 <strong>6+ job boards</strong> searched</span>
+  <span>🤖 <strong>AI ranked</strong> results</span>
+  <span>⚡ <strong>Instant</strong> results</span>
+  <span>🔒 <strong>Secure payment</strong> via Paystack</span>
+</div>
+
+<footer>
+  &copy; 2026 JobMatch · Built by <a href="mailto:Jeff.006760@gmail.com">Nexus Softwares</a> · Nairobi, Kenya
+</footer>
+
+<script>
+let activeTab = 'upload';
+let selectedFile = null;
+
+function switchTab(tab, btn) {
+  activeTab = tab;
+  document.getElementById('tab-upload').classList.toggle('hidden', tab !== 'upload');
+  document.getElementById('tab-paste').classList.toggle('hidden', tab !== 'paste');
+  document.querySelectorAll('.tab').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+}
+
+const cvFileEl = document.getElementById('cvFile');
+const dropZone = document.getElementById('dropZone');
+const fileLabel = document.getElementById('fileLabel');
+
+function setFile(f) {
+  selectedFile = f;
+  fileLabel.textContent = '✓ ' + f.name;
+  fileLabel.classList.remove('hidden');
+}
+cvFileEl.addEventListener('change', () => { if (cvFileEl.files[0]) setFile(cvFileEl.files[0]); });
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) setFile(e.dataTransfer.files[0]);
+});
+
+function showErr(msg) {
+  const b = document.getElementById('errBox');
+  b.textContent = msg; b.classList.add('show');
+}
+function clearErr() { document.getElementById('errBox').classList.remove('show'); }
+
+async function readFileInBrowser(file) {
+  const name = file.name.toLowerCase();
+  if (name.endsWith('.txt')) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = e => resolve(e.target.result.trim());
+      r.onerror = () => reject(new Error('Could not read TXT file.'));
+      r.readAsText(file);
+    });
+  }
+  if (name.endsWith('.docx')) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = async e => {
+        try {
+          const result = await mammoth.extractRawText({ arrayBuffer: e.target.result });
+          if (!result.value.trim()) reject(new Error('DOCX appears empty.'));
+          else resolve(result.value.trim());
+        } catch { reject(new Error('Could not read DOCX.')); }
+      };
+      r.onerror = () => reject(new Error('Could not read DOCX.'));
+      r.readAsArrayBuffer(file);
+    });
+  }
+  if (name.endsWith('.pdf')) {
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = async e => {
+        try {
+          const pdfjsLib = await import('https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.min.mjs');
+          pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs';
+          const pdf = await pdfjsLib.getDocument({ data: e.target.result }).promise;
+          let text = '';
+          for (let i = 1; i <= pdf.numPages; i++) {
+            const page = await pdf.getPage(i);
+            const content = await page.getTextContent();
+            text += content.items.map(item => item.str).join(' ') + '\n';
+          }
+          if (!text.trim()) reject(new Error('PDF is image-based. Please paste CV as text.'));
+          else resolve(text.trim());
+        } catch(err) { reject(new Error('Could not read PDF: ' + err.message)); }
+      };
+      r.onerror = () => reject(new Error('Could not read PDF.'));
+      r.readAsArrayBuffer(file);
+    });
+  }
+  throw new Error('Unsupported file type. Use PDF, DOCX, or TXT.');
+}
+
+async function handleSearch() {
+  clearErr();
+  const btn = document.getElementById('searchBtn');
+  let cvText = '';
+
+  if (activeTab === 'paste') {
+    cvText = document.getElementById('cvText').value.trim();
+    if (!cvText) { showErr('Please paste your CV text.'); return; }
+  } else {
+    if (!selectedFile) { showErr('Please upload your CV file or switch to Paste Text.'); return; }
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spin"></span>Reading your CV…';
+    try {
+      cvText = await readFileInBrowser(selectedFile);
+    } catch(err) {
+      showErr(err.message);
+      btn.disabled = false;
+      btn.innerHTML = 'Find My Matching Jobs →';
+      return;
+    }
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Analysing your CV…';
+
+  try {
+    const res = await fetch('/api/parse', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cv_text: cvText })
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) throw new Error(data.error || 'Could not analyse CV.');
+
+    // Save to sessionStorage
+    sessionStorage.setItem('jm_cv', cvText);
+    sessionStorage.setItem('jm_keywords', JSON.stringify(data.keywords));
+
+    btn.innerHTML = '<span class="spin"></span>Redirecting to payment…';
+    window.location.href = data.paystack_url;
+
+  } catch(err) {
+    showErr(err.message);
+    btn.disabled = false;
+    btn.innerHTML = 'Find My Matching Jobs →';
+  }
+}
+</script>
+</body>
+</html>
