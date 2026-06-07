@@ -9,31 +9,30 @@ from dateutil import parser as dateparser
 # ── RSS Feed Sources ──
 FEEDS = [
     {
-        "source": "BrighterMonday",
-        "url": "https://www.brightermonday.co.ke/jobs.rss"
-    },
-    {
-        "source": "MyJobMag",
-        "url": "https://www.myjobmag.co.ke/rss/jobs"
-    },
-    {
         "source": "JobWebKenya",
         "url": "https://www.jobwebkenya.com/feed/"
     },
     {
-        "source": "RecruitmentRoom",
-        "url": "https://recruitmentroom.com/feed/"
+        "source": "Corporate Staffing",
+        "url": "https://www.corporatestaffing.co.ke/feed/"
     },
     {
-        "source": "NGO Recruitment",
-        "url": "https://ngorecruitment.org/feed/"
+        "source": "Google IT Jobs Kenya",
+        "url": "https://news.google.com/rss/search?q=IT+jobs+kenya+apply+now&hl=en-KE&gl=KE&ceid=KE:en"
     },
     {
-        "source": "UN Jobs Kenya",
-        "url": "https://unjobs.org/duty_stations/kenya.rss"
+        "source": "Google Jobs Kenya",
+        "url": "https://news.google.com/rss/search?q=jobs+kenya+vacancy&hl=en-KE&gl=KE&ceid=KE:en"
+    },
+    {
+        "source": "Google NGO Jobs",
+        "url": "https://news.google.com/rss/search?q=NGO+jobs+kenya+apply&hl=en-KE&gl=KE&ceid=KE:en"
+    },
+    {
+        "source": "Google Graduate Jobs",
+        "url": "https://news.google.com/rss/search?q=graduate+trainee+jobs+kenya&hl=en-KE&gl=KE&ceid=KE:en"
     },
 ]
-
 
 def _parse_date(entry) -> datetime | None:
     """Try to extract a published date from a feed entry."""
