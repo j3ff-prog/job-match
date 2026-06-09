@@ -68,7 +68,7 @@ def parse_cv():
 
     # Fetch and rank jobs now — return preview (no links) + total count
     try:
-        all_jobs = fetch_all_jobs([])
+        all_jobs = fetch_all_jobs()
         try:
             ranked = rank_jobs(cv_text, all_jobs)
         except Exception:
@@ -124,16 +124,9 @@ def match_jobs():
         return jsonify({"error": "Payment not confirmed. If you were charged contact support."}), 402
 
     # Get search keywords
-    search_terms = keywords.get("search_keywords", []) + keywords.get("job_titles", [])
-    if not search_terms:
-        try:
-            extracted = extract_cv_keywords(cv_text)
-            search_terms = extracted.get("search_keywords", []) + extracted.get("job_titles", [])
-        except Exception:
-            search_terms = ["kenya jobs"]
 
     # Fetch jobs from feeds
-    jobs = fetch_all_jobs(search_terms)
+    jobs = fetch_all_jobs()
 
     if not jobs:
         return jsonify({

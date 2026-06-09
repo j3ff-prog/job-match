@@ -6,7 +6,6 @@ import feedparser
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
 
-# ── RSS Feed Sources ──
 FEEDS = [
     {
         "source": "JobWebKenya",
@@ -34,8 +33,8 @@ FEEDS = [
     },
 ]
 
-def _parse_date(entry) -> datetime | None:
-    """Try to extract a published date from a feed entry."""
+
+def _parse_date(entry):
     for attr in ("published", "updated", "created"):
         val = getattr(entry, attr, None)
         if val:
@@ -51,33 +50,24 @@ def _parse_date(entry) -> datetime | None:
     return None
 
 
-def _is_expired(entry) -> bool:
-    """Returns True if the job was posted more than 30 days ago."""
+def _is_expired(entry):
     pub_date = _parse_date(entry)
     if not pub_date:
-        return False  # if no date, assume still valid
+        return False
     now = datetime.now(timezone.utc)
     if pub_date.tzinfo is None:
         pub_date = pub_date.replace(tzinfo=timezone.utc)
-    age_days = (now - pub_date).days
-    return age_days > 30
+    return (now - pub_date).days > 30
 
 
-def _clean_html(text: str) -> str:
-    """Remove basic HTML tags from summary text."""
+def _clean_html(text):
     import re
     clean = re.sub(r"<[^>]+>", " ", text or "")
     clean = re.sub(r"\s+", " ", clean).strip()
     return clean[:400]
 
 
-def fetch_all_jobs(keywords: list) -> list:
-    """
-    Fetches jobs from all RSS feeds.
-    Filters out expired jobs.
-    Does basic keyword matching to pre-filter before AI ranking.
-    Returns list of job dicts.
-    """
+def fetch_all_jobs():
     all_jobs = []
 
     for feed_info in FEEDS:
@@ -107,10 +97,9 @@ def fetch_all_jobs(keywords: list) -> list:
                     "match_reason": ""
                 })
         except Exception:
-            # If one feed fails, continue with others
             continue
 
-    # Deduplicate by link
+    # Deduplicate
     seen = set()
     unique_jobs = []
     for job in all_jobs:
@@ -118,7 +107,7 @@ def fetch_all_jobs(keywords: list) -> list:
             seen.add(job["link"])
             unique_jobs.append(job)
 
-    # Sort by date — most recent first, unknown dates go to bottom
+    # Sort newest first
     def sort_key(job):
         try:
             return dateparser.parse(job.get("posted", "")) or datetime.min.replace(tzinfo=timezone.utc)
