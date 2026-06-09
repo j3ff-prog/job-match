@@ -61,13 +61,10 @@ def parse_cv():
     if len(cv_text) < 100:
         return jsonify({"error": "CV text is too short. Please paste your full CV."}), 400
 
-    try:
-        keywords = extract_cv_keywords(cv_text)
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 500
-
+    # No Gemini here — just validate and return paystack URL
+    # Gemini only runs after payment in /api/match
     return jsonify({
-        "keywords": keywords,
+        "keywords": {},
         "paystack_url": PAYSTACK_LINK
     })
 
