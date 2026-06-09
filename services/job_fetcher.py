@@ -61,28 +61,25 @@ def _clean_html(text):
 
 
 def fetch_all_jobs():
-    all_jobs = []
+    import concurrent.futures
 
-    for feed_info in FEEDS:
+    def fetch_one(feed_info):
+        jobs = []
         try:
-            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=8)
+            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=7)
             if not feed or not feed.entries:
-                continue
-
+                return jobs
             for entry in feed.entries:
                 if _is_expired(entry):
                     continue
-
                 title = entry.get("title", "").strip()
                 link = entry.get("link", "").strip()
                 summary = _clean_html(entry.get("summary", "") or entry.get("description", ""))
                 company = entry.get("author", "") or entry.get("dc_creator", "") or ""
                 pub_date = _parse_date(entry)
-
                 if not title or not link:
                     continue
-
-                all_jobs.append({
+                jobs.append({
                     "title": title,
                     "company": company,
                     "link": link,
@@ -93,7 +90,14 @@ def fetch_all_jobs():
                     "match_reason": ""
                 })
         except Exception:
-            continue
+            pass
+        return jobs
+
+    all_jobs = []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+        results = executor.map(fetch_one, FEEDS)
+        for job_list in results:
+            all_jobs.extend(job_list)
 
     # Deduplicate
     seen = set()
