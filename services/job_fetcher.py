@@ -1,37 +1,30 @@
-"""
-job_fetcher.py — Fetches jobs from Kenyan job board RSS feeds.
-Filters out expired jobs. Returns clean list of job dicts.
-"""
 import feedparser
+import urllib.request
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
 
 FEEDS = [
-    {
-        "source": "JobWebKenya",
-        "url": "https://www.jobwebkenya.com/feed/"
-    },
-    {
-        "source": "Corporate Staffing",
-        "url": "https://www.corporatestaffing.co.ke/feed/"
-    },
-    {
-        "source": "Google IT Jobs Kenya",
-        "url": "https://news.google.com/rss/search?q=IT+jobs+kenya+apply+now&hl=en-KE&gl=KE&ceid=KE:en"
-    },
-    {
-        "source": "Google Jobs Kenya",
-        "url": "https://news.google.com/rss/search?q=jobs+kenya+vacancy&hl=en-KE&gl=KE&ceid=KE:en"
-    },
-    {
-        "source": "Google NGO Jobs",
-        "url": "https://news.google.com/rss/search?q=NGO+jobs+kenya+apply&hl=en-KE&gl=KE&ceid=KE:en"
-    },
-    {
-        "source": "Google Graduate Jobs",
-        "url": "https://news.google.com/rss/search?q=graduate+trainee+jobs+kenya&hl=en-KE&gl=KE&ceid=KE:en"
-    },
+    {"source": "JobWebKenya", "url": "https://www.jobwebkenya.com/feed/"},
+    {"source": "Corporate Staffing", "url": "https://www.corporatestaffing.co.ke/feed/"},
+    {"source": "Google IT Jobs Kenya", "url": "https://news.google.com/rss/search?q=IT+jobs+kenya+apply+now&hl=en-KE&gl=KE&ceid=KE:en"},
+    {"source": "Google Jobs Kenya", "url": "https://news.google.com/rss/search?q=jobs+kenya+vacancy&hl=en-KE&gl=KE&ceid=KE:en"},
+    {"source": "Google NGO Jobs", "url": "https://news.google.com/rss/search?q=NGO+jobs+kenya+apply&hl=en-KE&gl=KE&ceid=KE:en"},
+    {"source": "Google Graduate Jobs", "url": "https://news.google.com/rss/search?q=graduate+trainee+jobs+kenya&hl=en-KE&gl=KE&ceid=KE:en"},
 ]
+
+
+def _fetch_feed_with_timeout(url, timeout=8):
+    """Fetch RSS feed with a hard timeout so slow feeds don't block everything."""
+    try:
+        req = urllib.request.Request(
+            url,
+            headers={"User-Agent": "Mozilla/5.0 (compatible; JobMatchBot/1.0)"}
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as response:
+            content = response.read()
+        return feedparser.parse(content)
+    except Exception:
+        return None
 
 
 def _parse_date(entry):
@@ -72,7 +65,10 @@ def fetch_all_jobs():
 
     for feed_info in FEEDS:
         try:
-            feed = feedparser.parse(feed_info["url"])
+            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=8)
+            if not feed or not feed.entries:
+                continue
+
             for entry in feed.entries:
                 if _is_expired(entry):
                     continue
