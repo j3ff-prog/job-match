@@ -79,7 +79,6 @@ def fetch_all_jobs(keywords: list) -> list:
     Returns list of job dicts.
     """
     all_jobs = []
-    keywords_lower = [k.lower() for k in keywords]
 
     for feed_info in FEEDS:
         try:
@@ -95,12 +94,6 @@ def fetch_all_jobs(keywords: list) -> list:
                 pub_date = _parse_date(entry)
 
                 if not title or not link:
-                    continue
-
-                # Basic keyword pre-filter — job must match at least one keyword
-                searchable = (title + " " + summary).lower()
-                matches = any(kw in searchable for kw in keywords_lower)
-                if not matches:
                     continue
 
                 all_jobs.append({

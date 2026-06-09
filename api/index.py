@@ -68,8 +68,7 @@ def parse_cv():
 
     # Fetch and rank jobs now — return preview (no links) + total count
     try:
-        search_terms = keywords.get("search_keywords", []) + keywords.get("job_titles", [])
-        all_jobs = fetch_all_jobs(search_terms)
+        all_jobs = fetch_all_jobs([])
         try:
             ranked = rank_jobs(cv_text, all_jobs)
         except Exception:
