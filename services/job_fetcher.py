@@ -4,17 +4,22 @@ from datetime import datetime, timezone
 from dateutil import parser as dateparser
 
 FEEDS = [
-    {"source": "JobWebKenya", "url": "https://www.jobwebkenya.com/feed/"},
-    {"source": "Corporate Staffing", "url": "https://www.corporatestaffing.co.ke/feed/"},
-    {"source": "Google IT Jobs Kenya", "url": "https://news.google.com/rss/search?q=IT+jobs+kenya+apply+now&hl=en-KE&gl=KE&ceid=KE:en"},
-    {"source": "Google Jobs Kenya", "url": "https://news.google.com/rss/search?q=jobs+kenya+vacancy&hl=en-KE&gl=KE&ceid=KE:en"},
-    {"source": "Google NGO Jobs", "url": "https://news.google.com/rss/search?q=NGO+jobs+kenya+apply&hl=en-KE&gl=KE&ceid=KE:en"},
-    {"source": "Google Graduate Jobs", "url": "https://news.google.com/rss/search?q=graduate+trainee+jobs+kenya&hl=en-KE&gl=KE&ceid=KE:en"},
+    {
+        "source": "JobWebKenya",
+        "url": "https://www.jobwebkenya.com/feed/"
+    },
+    {
+        "source": "Corporate Staffing",
+        "url": "https://www.corporatestaffing.co.ke/feed/"
+    },
+    {
+        "source": "Opportunities for Young Kenyans",
+        "url": "https://opportunitiesforyoungkenyans.co.ke/feed/"
+    },
 ]
 
 
 def _fetch_feed_with_timeout(url, timeout=8):
-    """Fetch RSS feed with a hard timeout so slow feeds don't block everything."""
     try:
         req = urllib.request.Request(
             url,
@@ -61,14 +66,13 @@ def _clean_html(text):
 
 
 def fetch_all_jobs():
-    import concurrent.futures
+    all_jobs = []
 
-    def fetch_one(feed_info):
-        jobs = []
+    for feed_info in FEEDS:
         try:
-            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=7)
+            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=8)
             if not feed or not feed.entries:
-                return jobs
+                continue
             for entry in feed.entries:
                 if _is_expired(entry):
                     continue
@@ -79,7 +83,7 @@ def fetch_all_jobs():
                 pub_date = _parse_date(entry)
                 if not title or not link:
                     continue
-                jobs.append({
+                all_jobs.append({
                     "title": title,
                     "company": company,
                     "link": link,
@@ -90,14 +94,7 @@ def fetch_all_jobs():
                     "match_reason": ""
                 })
         except Exception:
-            pass
-        return jobs
-
-    all_jobs = []
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
-        results = executor.map(fetch_one, FEEDS)
-        for job_list in results:
-            all_jobs.extend(job_list)
+            continue
 
     # Deduplicate
     seen = set()
