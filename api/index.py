@@ -66,8 +66,36 @@ def parse_cv():
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
 
+    # Fetch and rank jobs now — return preview (no links) + total count
+    try:
+        search_terms = keywords.get("search_keywords", []) + keywords.get("job_titles", [])
+        all_jobs = fetch_all_jobs(search_terms)
+        try:
+            ranked = rank_jobs(cv_text, all_jobs)
+        except Exception:
+            ranked = all_jobs[:15]
+
+        total = len(ranked)
+
+        # Preview — 3 jobs, links removed
+        preview = []
+        for job in ranked[:3]:
+            preview.append({
+                "title": job.get("title", ""),
+                "company": job.get("company", ""),
+                "source": job.get("source", ""),
+                "posted": job.get("posted", "Date unknown"),
+                "match_reason": job.get("match_reason", ""),
+            })
+
+    except Exception:
+        total = 0
+        preview = []
+
     return jsonify({
         "keywords": keywords,
+        "total": total,
+        "preview": preview,
         "paystack_url": PAYSTACK_LINK
     })
 

@@ -56,7 +56,7 @@ nav a{font-size:.82rem;color:var(--green);text-decoration:none}
 .job-summary{font-size:.82rem;color:var(--muted);line-height:1.6;margin-bottom:.75rem}
 .job-match{font-size:.8rem;color:var(--green);margin-bottom:.75rem;font-style:italic}
 .job-footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:.5rem}
-.job-posted{font-size:.75rem;color:var(--muted)}
+.job-posted{font-size:.75rem;color:var(--muted);background:var(--dark-light);padding:.2rem .6rem;border-radius:100px}
 .job-link{display:inline-flex;align-items:center;gap:.4rem;background:var(--green);color:var(--dark);padding:.45rem 1rem;border-radius:6px;font-size:.82rem;font-weight:700;text-decoration:none;transition:all .2s}
 .job-link:hover{background:var(--green-light);transform:translateY(-1px)}
 
@@ -178,7 +178,7 @@ function renderJobs(jobs, keywords, message) {
       ${job.match_reason ? `<div class="job-match">✓ ${job.match_reason}</div>` : ''}
       ${job.summary ? `<div class="job-summary">${job.summary}</div>` : ''}
       <div class="job-footer">
-        <span class="job-posted">Posted: ${job.posted || 'Recently'}</span>
+        <span class="job-posted">${job.posted === 'Date unknown' ? '📅 Date unknown' : '📅 ' + job.posted}</span>
         <a href="${job.link}" target="_blank" rel="noopener" class="job-link">Apply Now →</a>
       </div>
     `;

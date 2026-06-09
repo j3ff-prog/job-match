@@ -109,7 +109,8 @@ def fetch_all_jobs(keywords: list) -> list:
                     "link": link,
                     "summary": summary,
                     "source": feed_info["source"],
-                    "posted": pub_date.strftime("%d %b %Y") if pub_date else "Recently",
+                    "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
+                    "posted_raw": pub_date.isoformat() if pub_date else "",
                     "match_reason": ""
                 })
         except Exception:
@@ -124,4 +125,12 @@ def fetch_all_jobs(keywords: list) -> list:
             seen.add(job["link"])
             unique_jobs.append(job)
 
+    # Sort by date — most recent first, unknown dates go to bottom
+    def sort_key(job):
+        try:
+            return dateparser.parse(job.get("posted", "")) or datetime.min.replace(tzinfo=timezone.utc)
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    unique_jobs.sort(key=sort_key, reverse=True)
     return unique_jobs

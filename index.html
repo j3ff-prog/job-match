@@ -84,6 +84,23 @@ textarea::placeholder{color:var(--muted)}
 
 footer{border-top:1px solid var(--border);text-align:center;padding:1.25rem;font-size:.78rem;color:var(--muted)}
 footer a{color:var(--green);text-decoration:none}
+/* PREVIEW SECTION */
+.preview-header{text-align:center;padding:1.5rem 0 1rem;border-top:1px solid var(--border);margin-top:1.5rem}
+.preview-count{font-family:'Playfair Display',serif;font-size:1.6rem;color:var(--white);margin-bottom:.3rem}
+.preview-count em{color:var(--green);font-style:normal}
+.preview-sub{font-size:.83rem;color:var(--muted)}
+.preview-card{background:var(--dark-light);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin-bottom:.65rem;position:relative}
+.preview-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem;margin-bottom:.5rem}
+.preview-title{font-weight:700;font-size:.95rem;color:var(--white)}
+.preview-company{font-size:.8rem;color:var(--muted);margin-top:.15rem}
+.preview-source{background:var(--green-glow);border:1px solid var(--border);color:var(--green);font-size:.65rem;font-weight:600;padding:.18rem .5rem;border-radius:4px;white-space:nowrap;flex-shrink:0}
+.preview-date{font-size:.72rem;color:var(--muted);background:var(--dark-mid);padding:.18rem .55rem;border-radius:100px;display:inline-block;margin-bottom:.5rem}
+.preview-match{font-size:.78rem;color:var(--green);font-style:italic;margin-bottom:.5rem}
+.preview-blur{filter:blur(4px);background:var(--dark-mid);border-radius:6px;height:36px;display:flex;align-items:center;justify-content:center;pointer-events:none;user-select:none;color:transparent;font-size:.82rem;font-weight:700;border:1px solid var(--border)}
+.locked-msg{text-align:center;padding:1.25rem;background:var(--green-glow);border:1px solid var(--border);border-radius:10px;margin:.75rem 0}
+.lock-icon{font-size:1.5rem;margin-bottom:.35rem}
+.lock-text{font-size:.85rem;color:var(--text)}
+.btn-unlock{margin-top:.5rem;background:var(--green);font-size:1rem}
 .hidden{display:none!important}
 </style>
 </head>
@@ -136,7 +153,7 @@ footer a{color:var(--green);text-decoration:none}
   <div class="price-box">
     <div class="price-left">
       <strong>One Search — All Job Boards</strong>
-      <p>BrighterMonday · MyJobMag · JobWebKenya · RecruitmentRoom · NGO Jobs + more</p>
+      <p>JobWebKenya · Corporate Staffing · Google Jobs · NGO Jobs + more</p>
     </div>
     <div class="price-amount">KES 49</div>
   </div>
@@ -145,6 +162,22 @@ footer a{color:var(--green);text-decoration:none}
     Find My Matching Jobs →
   </button>
   <div class="err" id="errBox"></div>
+
+  <!-- PREVIEW SECTION — hidden until results come back -->
+  <div id="previewSection" class="hidden">
+    <div class="preview-header">
+      <div class="preview-count" id="previewCount"></div>
+      <div class="preview-sub">Here's a preview of your top matches — unlock all with KES 49</div>
+    </div>
+    <div id="previewCards"></div>
+    <div class="locked-msg">
+      <div class="lock-icon">🔒</div>
+      <div class="lock-text" id="lockText"></div>
+    </div>
+    <button class="btn btn-unlock" id="unlockBtn" onclick="handleUnlock()">
+      Unlock All Jobs for KES 49 →
+    </button>
+  </div>
 
 </div>
 
@@ -162,6 +195,7 @@ footer a{color:var(--green);text-decoration:none}
 <script>
 let activeTab = 'upload';
 let selectedFile = null;
+let previewData = null; // stores { keywords, total, preview, paystack_url }
 
 function switchTab(tab, btn) {
   activeTab = tab;
@@ -243,6 +277,7 @@ async function readFileInBrowser(file) {
   throw new Error('Unsupported file type. Use PDF, DOCX, or TXT.');
 }
 
+// ── Step 1: Analyse CV + show preview ──
 async function handleSearch() {
   clearErr();
   const btn = document.getElementById('searchBtn');
@@ -266,7 +301,7 @@ async function handleSearch() {
   }
 
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span>Analysing your CV…';
+  btn.innerHTML = '<span class="spin"></span>Scanning job boards…';
 
   try {
     const res = await fetch('/api/parse', {
@@ -277,18 +312,79 @@ async function handleSearch() {
     const data = await res.json();
     if (!res.ok || data.error) throw new Error(data.error || 'Could not analyse CV.');
 
-    // Save to sessionStorage
+    // Save to sessionStorage for results page
     sessionStorage.setItem('jm_cv', cvText);
     sessionStorage.setItem('jm_keywords', JSON.stringify(data.keywords));
 
-    btn.innerHTML = '<span class="spin"></span>Redirecting to payment…';
-    window.location.href = data.paystack_url;
+    // Store preview data
+    previewData = data;
+
+    // Show preview
+    showPreview(data);
+
+    btn.disabled = false;
+    btn.innerHTML = 'Find My Matching Jobs →';
 
   } catch(err) {
     showErr(err.message);
     btn.disabled = false;
     btn.innerHTML = 'Find My Matching Jobs →';
   }
+}
+
+// ── Show preview cards ──
+function showPreview(data) {
+  const total = data.total || 0;
+  const preview = data.preview || [];
+
+  // Count
+  document.getElementById('previewCount').innerHTML =
+    `We found <em>${total}</em> jobs matching your profile`;
+
+  // Lock text
+  document.getElementById('lockText').innerHTML =
+    `<strong>${total - 3 > 0 ? total - 3 : total} more jobs</strong> are waiting — unlock all with direct apply links for KES 49`;
+
+  // Preview cards
+  const container = document.getElementById('previewCards');
+  container.innerHTML = '';
+
+  if (preview.length === 0) {
+    container.innerHTML = '<p style="text-align:center;color:var(--muted);padding:1rem">No preview available — pay to see all results.</p>';
+  } else {
+    preview.forEach(job => {
+      const card = document.createElement('div');
+      card.className = 'preview-card';
+      card.innerHTML = `
+        <div class="preview-card-top">
+          <div>
+            <div class="preview-title">${job.title}</div>
+            <div class="preview-company">${job.company || 'Company not listed'}</div>
+          </div>
+          <span class="preview-source">${job.source}</span>
+        </div>
+        ${job.match_reason ? `<div class="preview-match">✓ ${job.match_reason}</div>` : ''}
+        <div class="preview-date">📅 ${job.posted}</div>
+        <div class="preview-blur">🔒 Apply Now — Unlock to access link</div>
+      `;
+      container.appendChild(card);
+    });
+  }
+
+  // Show the section
+  document.getElementById('previewSection').classList.remove('hidden');
+
+  // Scroll to preview
+  document.getElementById('previewSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// ── Step 2: Unlock — redirect to Paystack ──
+function handleUnlock() {
+  if (!previewData) return;
+  const btn = document.getElementById('unlockBtn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spin"></span>Redirecting to payment…';
+  window.location.href = previewData.paystack_url;
 }
 </script>
 </body>
