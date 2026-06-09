@@ -41,19 +41,21 @@ def _verify_paystack(reference: str) -> bool:
 
 @app.route("/api/debug", methods=["GET"])
 def debug_feeds():
-    import urllib.request
+    import requests as req
     results = {}
     feeds = [
         ("JobWebKenya", "https://www.jobwebkenya.com/feed/"),
         ("Corporate Staffing", "https://www.corporatestaffing.co.ke/feed/"),
         ("OYK", "https://opportunitiesforyoungkenyans.co.ke/feed/"),
     ]
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "application/rss+xml, application/xml, text/xml, */*",
+    }
     for name, url in feeds:
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-            with urllib.request.urlopen(req, timeout=8) as resp:
-                content = resp.read()
-                results[name] = f"OK — {len(content)} bytes"
+            resp = req.get(url, headers=headers, timeout=8, allow_redirects=True)
+            results[name] = f"OK — {len(resp.content)} bytes — status {resp.status_code}"
         except Exception as e:
             results[name] = f"FAILED — {str(e)}"
     return jsonify(results)
@@ -128,3 +130,6 @@ def match_jobs():
         "total_found": len(jobs),
         "message": f"Found {len(jobs)} matching jobs. Showing your top {len(ranked)} matches."
     })
+
+if __name__ == "__main__":
+    app.run(debug=True, port=5000)

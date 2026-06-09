@@ -21,13 +21,14 @@ FEEDS = [
 
 def _fetch_feed_with_timeout(url, timeout=8):
     try:
-        req = urllib.request.Request(
-            url,
-            headers={"User-Agent": "Mozilla/5.0 (compatible; JobMatchBot/1.0)"}
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as response:
-            content = response.read()
-        return feedparser.parse(content)
+        import requests
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "Accept": "application/rss+xml, application/xml, text/xml, */*",
+        }
+        resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
+        resp.raise_for_status()
+        return feedparser.parse(resp.content)
     except Exception:
         return None
 
