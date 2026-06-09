@@ -1,6 +1,5 @@
 """
 api/index.py — JobMatch Flask API for Vercel serverless.
-CV data travels through browser sessionStorage — no server-side sessions.
 """
 import os
 import sys
@@ -17,8 +16,6 @@ app = Flask(__name__)
 PAYSTACK_VERIFY_URL = "https://api.paystack.co/transaction/verify/{}"
 PAYSTACK_LINK = os.getenv("PAYSTACK_LINK", "https://paystack.shop/pay/1awi14rss-")
 
-
-# ── CORS ──
 @app.after_request
 def add_cors(response):
     response.headers["Access-Control-Allow-Origin"] = "*"
@@ -26,8 +23,6 @@ def add_cors(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
-
-# ── Paystack helper ──
 def _verify_paystack(reference: str) -> bool:
     secret_key = os.getenv("PAYSTACK_SECRET_KEY", "")
     if not secret_key:
@@ -42,113 +37,6 @@ def _verify_paystack(reference: str) -> bool:
         return result.get("data", {}).get("status") == "success"
     except Exception:
         return False
-
-
-# ─────────────────────────────────────────────────────────
-# POST /api/parse
-# Accepts CV text, returns extracted keywords + Paystack URL.
-# ─────────────────────────────────────────────────────────
-@app.route("/api/parse", methods=["POST", "OPTIONS"])
-def parse_cv():
-    if request.method == "OPTIONS":
-        return Response(status=200)
-
-    data = request.get_json(silent=True) or {}
-    cv_text = (data.get("cv_text") or "").strip()
-
-    if not cv_text:
-        return jsonify({"error": "Please paste your CV text."}), 400
-    if len(cv_text) < 100:
-        return jsonify({"error": "CV text is too short. Please paste your full CV."}), 400
-
-    # No Gemini here — just validate and return paystack URL
-    # Gemini only runs after payment in /api/match
-    return jsonify({
-        "keywords": {},
-        "paystack_url": PAYSTACK_LINK
-    })
-
-
-@app.route("/api/preview", methods=["POST", "OPTIONS"])
-def preview_jobs():
-    if request.method == "OPTIONS":
-        return Response(status=200)
-
-    data = request.get_json(silent=True) or {}
-    cv_text = (data.get("cv_text") or "").strip()
-
-    if not cv_text:
-        return jsonify({"error": "CV text missing."}), 400
-
-    try:
-        all_jobs = fetch_all_jobs()
-        total = len(all_jobs)
-
-        # No AI ranking here — just return first 3 as preview
-        # AI ranking happens after payment on results page
-        preview = []
-        for job in all_jobs[:3]:
-            preview.append({
-                "title": job.get("title", ""),
-                "company": job.get("company", ""),
-                "source": job.get("source", ""),
-                "posted": job.get("posted", "Date unknown"),
-                "match_reason": "",
-            })
-
-        return jsonify({"total": total, "preview": preview})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ─────────────────────────────────────────────────────────
-# POST /api/match
-# Verifies payment, fetches + ranks jobs, returns results.
-# Body: { reference, cv_text, keywords }
-# ─────────────────────────────────────────────────────────
-@app.route("/api/match", methods=["POST", "OPTIONS"])
-def match_jobs():
-    if request.method == "OPTIONS":
-        return Response(status=200)
-
-    data = request.get_json(silent=True) or {}
-    reference = (data.get("reference") or "").strip()
-    cv_text   = (data.get("cv_text") or "").strip()
-    keywords  = data.get("keywords") or {}
-
-    if not reference:
-        return jsonify({"error": "Missing payment reference."}), 400
-    if not cv_text:
-        return jsonify({"error": "CV data missing. Please go back and start again."}), 400
-
-    # Verify payment
-    if not _verify_paystack(reference):
-        return jsonify({"error": "Payment not confirmed. If you were charged contact support."}), 402
-
-    # Get search keywords
-
-    # Fetch jobs from feeds
-    jobs = fetch_all_jobs()
-
-    if not jobs:
-        return jsonify({
-            "jobs": [],
-            "keywords": keywords,
-            "message": "No matching jobs found right now. Try again tomorrow as new jobs are posted daily."
-        })
-
-    # AI ranking
-    try:
-        ranked = rank_jobs(cv_text, jobs)
-    except Exception:
-        ranked = jobs[:15]
-
-    return jsonify({
-        "jobs": ranked,
-        "keywords": keywords,
-        "total_found": len(jobs),
-        "message": f"Found {len(jobs)} matching jobs. Showing your top {len(ranked)} matches."
-    })
 
 
 @app.route("/api/debug", methods=["GET"])
@@ -169,3 +57,74 @@ def debug_feeds():
         except Exception as e:
             results[name] = f"FAILED — {str(e)}"
     return jsonify(results)
+
+
+@app.route("/api/parse", methods=["POST", "OPTIONS"])
+def parse_cv():
+    if request.method == "OPTIONS":
+        return Response(status=200)
+    data = request.get_json(silent=True) or {}
+    cv_text = (data.get("cv_text") or "").strip()
+    if not cv_text:
+        return jsonify({"error": "Please paste your CV text."}), 400
+    if len(cv_text) < 100:
+        return jsonify({"error": "CV text is too short. Please paste your full CV."}), 400
+    return jsonify({"keywords": {}, "paystack_url": PAYSTACK_LINK})
+
+
+@app.route("/api/preview", methods=["POST", "OPTIONS"])
+def preview_jobs():
+    if request.method == "OPTIONS":
+        return Response(status=200)
+    data = request.get_json(silent=True) or {}
+    cv_text = (data.get("cv_text") or "").strip()
+    if not cv_text:
+        return jsonify({"error": "CV text missing."}), 400
+    try:
+        all_jobs = fetch_all_jobs()
+        total = len(all_jobs)
+        preview = []
+        for job in all_jobs[:3]:
+            preview.append({
+                "title": job.get("title", ""),
+                "company": job.get("company", ""),
+                "source": job.get("source", ""),
+                "posted": job.get("posted", "Date unknown"),
+                "match_reason": "",
+            })
+        return jsonify({"total": total, "preview": preview})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/match", methods=["POST", "OPTIONS"])
+def match_jobs():
+    if request.method == "OPTIONS":
+        return Response(status=200)
+    data = request.get_json(silent=True) or {}
+    reference = (data.get("reference") or "").strip()
+    cv_text   = (data.get("cv_text") or "").strip()
+    keywords  = data.get("keywords") or {}
+    if not reference:
+        return jsonify({"error": "Missing payment reference."}), 400
+    if not cv_text:
+        return jsonify({"error": "CV data missing. Please go back and start again."}), 400
+    if not _verify_paystack(reference):
+        return jsonify({"error": "Payment not confirmed. If you were charged contact support."}), 402
+    jobs = fetch_all_jobs()
+    if not jobs:
+        return jsonify({
+            "jobs": [],
+            "keywords": keywords,
+            "message": "No matching jobs found right now. Try again tomorrow as new jobs are posted daily."
+        })
+    try:
+        ranked = rank_jobs(cv_text, jobs)
+    except Exception:
+        ranked = jobs[:15]
+    return jsonify({
+        "jobs": ranked,
+        "keywords": keywords,
+        "total_found": len(jobs),
+        "message": f"Found {len(jobs)} matching jobs. Showing your top {len(ranked)} matches."
+    })
