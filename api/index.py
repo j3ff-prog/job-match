@@ -78,35 +78,31 @@ def preview_jobs():
         return Response(status=200)
 
     data = request.get_json(silent=True) or {}
-    cv_text  = (data.get("cv_text") or "").strip()
-    keywords = data.get("keywords") or {}
+    cv_text = (data.get("cv_text") or "").strip()
 
     if not cv_text:
         return jsonify({"error": "CV text missing."}), 400
 
     try:
         all_jobs = fetch_all_jobs()
-        try:
-            ranked = rank_jobs(cv_text, all_jobs)
-        except Exception:
-            ranked = all_jobs[:15]
+        total = len(all_jobs)
 
-        total = len(ranked)
+        # No AI ranking here — just return first 3 as preview
+        # AI ranking happens after payment on results page
         preview = []
-        for job in ranked[:3]:
+        for job in all_jobs[:3]:
             preview.append({
                 "title": job.get("title", ""),
                 "company": job.get("company", ""),
                 "source": job.get("source", ""),
                 "posted": job.get("posted", "Date unknown"),
-                "match_reason": job.get("match_reason", ""),
+                "match_reason": "",
             })
 
         return jsonify({"total": total, "preview": preview})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
 
 # ─────────────────────────────────────────────────────────
 # POST /api/match
