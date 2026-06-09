@@ -300,47 +300,57 @@ async function handleSearch() {
     }
   }
 
+  // Step 1 — extract keywords (fast)
   btn.disabled = true;
-  btn.innerHTML = '<span class="spin"></span>Scanning job boards…';
+  btn.innerHTML = '<span class="spin"></span>Analysing your CV…';
 
+  let keywords, paystackUrl;
   try {
     const res = await fetch('/api/parse', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cv_text: cvText })
     });
-
-    // Guard against empty response (timeout or server error)
     const text = await res.text();
-    if (!text || !text.trim()) {
-      throw new Error('The server took too long to respond. Please try again in a few seconds.');
-    }
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch(e) {
-      throw new Error('Server returned an unexpected response. Please try again.');
-    }
+    if (!text || !text.trim()) throw new Error('Server took too long. Please try again.');
+    const data = JSON.parse(text);
     if (!res.ok || data.error) throw new Error(data.error || 'Could not analyse CV.');
-
-    // Save to sessionStorage for results page
-    sessionStorage.setItem('jm_cv', cvText);
-    sessionStorage.setItem('jm_keywords', JSON.stringify(data.keywords));
-
-    // Store preview data
-    previewData = data;
-
-    // Show preview
-    showPreview(data);
-
-    btn.disabled = false;
-    btn.innerHTML = 'Find My Matching Jobs →';
-
+    keywords = data.keywords;
+    paystackUrl = data.paystack_url;
   } catch(err) {
     showErr(err.message);
     btn.disabled = false;
     btn.innerHTML = 'Find My Matching Jobs →';
+    return;
   }
+
+  // Save to sessionStorage
+  sessionStorage.setItem('jm_cv', cvText);
+  sessionStorage.setItem('jm_keywords', JSON.stringify(keywords));
+
+  // Step 2 — fetch + rank jobs (slower, separate call)
+  btn.innerHTML = '<span class="spin"></span>Scanning job boards…';
+
+  try {
+    const res2 = await fetch('/api/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cv_text: cvText, keywords })
+    });
+    const text2 = await res2.text();
+    if (!text2 || !text2.trim()) throw new Error('Job scan timed out. Please try again.');
+    const data2 = JSON.parse(text2);
+    if (!res2.ok || data2.error) throw new Error(data2.error || 'Could not fetch jobs.');
+
+    previewData = { ...data2, paystack_url: paystackUrl };
+    showPreview(previewData);
+
+  } catch(err) {
+    showErr(err.message);
+  }
+
+  btn.disabled = false;
+  btn.innerHTML = 'Find My Matching Jobs →';
 }
 
 // ── Show preview cards ──

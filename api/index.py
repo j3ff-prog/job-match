@@ -66,7 +66,24 @@ def parse_cv():
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
 
-    # Fetch and rank jobs now — return preview (no links) + total count
+    return jsonify({
+        "keywords": keywords,
+        "paystack_url": PAYSTACK_LINK
+    })
+
+
+@app.route("/api/preview", methods=["POST", "OPTIONS"])
+def preview_jobs():
+    if request.method == "OPTIONS":
+        return Response(status=200)
+
+    data = request.get_json(silent=True) or {}
+    cv_text  = (data.get("cv_text") or "").strip()
+    keywords = data.get("keywords") or {}
+
+    if not cv_text:
+        return jsonify({"error": "CV text missing."}), 400
+
     try:
         all_jobs = fetch_all_jobs()
         try:
@@ -75,8 +92,6 @@ def parse_cv():
             ranked = all_jobs[:15]
 
         total = len(ranked)
-
-        # Preview — 3 jobs, links removed
         preview = []
         for job in ranked[:3]:
             preview.append({
@@ -87,16 +102,10 @@ def parse_cv():
                 "match_reason": job.get("match_reason", ""),
             })
 
-    except Exception:
-        total = 0
-        preview = []
+        return jsonify({"total": total, "preview": preview})
 
-    return jsonify({
-        "keywords": keywords,
-        "total": total,
-        "preview": preview,
-        "paystack_url": PAYSTACK_LINK
-    })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 # ─────────────────────────────────────────────────────────
