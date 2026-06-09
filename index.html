@@ -309,7 +309,18 @@ async function handleSearch() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ cv_text: cvText })
     });
-    const data = await res.json();
+
+    // Guard against empty response (timeout or server error)
+    const text = await res.text();
+    if (!text || !text.trim()) {
+      throw new Error('The server took too long to respond. Please try again in a few seconds.');
+    }
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch(e) {
+      throw new Error('Server returned an unexpected response. Please try again.');
+    }
     if (!res.ok || data.error) throw new Error(data.error || 'Could not analyse CV.');
 
     // Save to sessionStorage for results page
