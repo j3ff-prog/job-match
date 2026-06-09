@@ -149,3 +149,23 @@ def match_jobs():
         "total_found": len(jobs),
         "message": f"Found {len(jobs)} matching jobs. Showing your top {len(ranked)} matches."
     })
+
+
+@app.route("/api/debug", methods=["GET"])
+def debug_feeds():
+    import urllib.request
+    results = {}
+    feeds = [
+        ("JobWebKenya", "https://www.jobwebkenya.com/feed/"),
+        ("Corporate Staffing", "https://www.corporatestaffing.co.ke/feed/"),
+        ("OYK", "https://opportunitiesforyoungkenyans.co.ke/feed/"),
+    ]
+    for name, url in feeds:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            with urllib.request.urlopen(req, timeout=8) as resp:
+                content = resp.read()
+                results[name] = f"OK — {len(content)} bytes"
+        except Exception as e:
+            results[name] = f"FAILED — {str(e)}"
+    return jsonify(results)
