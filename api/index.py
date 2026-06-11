@@ -74,7 +74,14 @@ def parse_cv():
         return jsonify({"error": "Please paste your CV text."}), 400
     if len(cv_text) < 100:
         return jsonify({"error": "CV text is too short. Please paste your full CV."}), 400
-    return jsonify({"keywords": {}, "paystack_url": PAYSTACK_LINK})
+
+    # Extract keywords using Gemini
+    try:
+        keywords = extract_cv_keywords(cv_text)
+    except Exception:
+        keywords = {}
+
+    return jsonify({"keywords": keywords, "paystack_url": PAYSTACK_LINK})
 
 
 @app.route("/api/preview", methods=["POST", "OPTIONS"])
@@ -82,11 +89,13 @@ def preview_jobs():
     if request.method == "OPTIONS":
         return Response(status=200)
     data = request.get_json(silent=True) or {}
-    cv_text = (data.get("cv_text") or "").strip()
+    cv_text  = (data.get("cv_text") or "").strip()
+    keywords = data.get("keywords") or {}
     if not cv_text:
         return jsonify({"error": "CV text missing."}), 400
     try:
-        all_jobs = fetch_all_jobs()
+        search_terms = keywords.get("search_keywords", []) + keywords.get("job_titles", [])
+        all_jobs = fetch_all_jobs(keywords=search_terms if search_terms else None)
         total = len(all_jobs)
         preview = []
         for job in all_jobs[:3]:
@@ -97,18 +106,10 @@ def preview_jobs():
                 "posted": job.get("posted", "Date unknown"),
                 "match_reason": "",
             })
-        return jsonify({
-            "total": total,
-            "preview": preview,
-            "debug_job_count": total,
-            "debug_sample": all_jobs[0] if all_jobs else None
-        })
+        return jsonify({"total": total, "preview": preview})
     except Exception as e:
         import traceback
-        return jsonify({
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        }), 500
+        return jsonify({"error": str(e), "traceback": traceback.format_exc()}), 500
 
 @app.route("/api/match", methods=["POST", "OPTIONS"])
 def match_jobs():
@@ -124,17 +125,22 @@ def match_jobs():
         return jsonify({"error": "CV data missing. Please go back and start again."}), 400
     if not _verify_paystack(reference):
         return jsonify({"error": "Payment not confirmed. If you were charged contact support."}), 402
-    jobs = fetch_all_jobs()
+
+    search_terms = keywords.get("search_keywords", []) + keywords.get("job_titles", [])
+    jobs = fetch_all_jobs(keywords=search_terms if search_terms else None)
+
     if not jobs:
         return jsonify({
             "jobs": [],
             "keywords": keywords,
             "message": "No matching jobs found right now. Try again tomorrow as new jobs are posted daily."
         })
+
     try:
         ranked = rank_jobs(cv_text, jobs)
     except Exception:
         ranked = jobs[:15]
+
     return jsonify({
         "jobs": ranked,
         "keywords": keywords,
