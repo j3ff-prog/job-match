@@ -13,7 +13,7 @@ RSS_FEEDS = [
     {"source": "Corporate Staffing", "url": "https://www.corporatestaffing.co.ke/feed/"},
 ]
 
-ADZUNA_TERMS = ["customer service", "accountant", "software developer", "nurse", "engineer"]
+DEFAULT_TERMS = ["kenya jobs", "nairobi jobs", "customer service kenya", "accountant kenya", "engineer kenya"]
 
 
 def _clean_html(text):
@@ -45,7 +45,7 @@ def _fetch_rss(feed_info):
     try:
         resp = requests.get(
             RSS2JSON,
-            params={"rss_url": feed_info["url"], "count": 30},
+            params={"rss_url": feed_info["url"], "count": 50},
             timeout=10
         )
         data = resp.json()
@@ -75,15 +75,15 @@ def _fetch_rss(feed_info):
         return []
 
 
-def _fetch_adzuna(keyword):
+def _fetch_adzuna(keyword, country="za", results=10):
     try:
         resp = requests.get(
-            "https://api.adzuna.com/v1/api/jobs/za/search/1",
+            f"https://api.adzuna.com/v1/api/jobs/{country}/search/1",
             params={
                 "app_id": ADZUNA_APP_ID,
                 "app_key": ADZUNA_APP_KEY,
                 "what": keyword,
-                "results_per_page": 5,
+                "results_per_page": results,
                 "sort_by": "date",
             },
             timeout=8
@@ -107,15 +107,24 @@ def _fetch_adzuna(keyword):
         return []
 
 
-def fetch_all_jobs():
+def fetch_all_jobs(keywords=None):
+    """
+    keywords: list of search terms extracted from CV.
+    Falls back to DEFAULT_TERMS if none provided.
+    """
     all_jobs = []
 
+    # RSS feeds — get everything, AI ranks later
     for feed in RSS_FEEDS:
         all_jobs.extend(_fetch_rss(feed))
 
-    for term in ADZUNA_TERMS[:3]:
-        all_jobs.extend(_fetch_adzuna(term))
+    # Adzuna — use CV keywords if available, else defaults
+    search_terms = keywords if keywords else DEFAULT_TERMS
+    # Use top 5 keywords only to avoid quota burn
+    for term in search_terms[:5]:
+        all_jobs.extend(_fetch_adzuna(term, country="za", results=5))
 
+    # Deduplicate
     seen = set()
     unique = []
     for job in all_jobs:
@@ -123,6 +132,7 @@ def fetch_all_jobs():
             seen.add(job["link"])
             unique.append(job)
 
+    # Sort newest first
     def sort_key(job):
         try:
             d = dateparser.parse(job.get("posted", ""))
