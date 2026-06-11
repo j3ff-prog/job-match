@@ -97,10 +97,18 @@ def preview_jobs():
                 "posted": job.get("posted", "Date unknown"),
                 "match_reason": "",
             })
-        return jsonify({"total": total, "preview": preview})
+        return jsonify({
+            "total": total,
+            "preview": preview,
+            "debug_job_count": total,
+            "debug_sample": all_jobs[0] if all_jobs else None
+        })
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
+        import traceback
+        return jsonify({
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
 
 @app.route("/api/match", methods=["POST", "OPTIONS"])
 def match_jobs():
