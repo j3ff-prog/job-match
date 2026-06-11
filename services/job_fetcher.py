@@ -1,62 +1,31 @@
-import feedparser
-import urllib.request
+"""
+job_fetcher.py — Fetches Kenyan jobs via RSS2JSON proxy service.
+RSS2JSON fetches feeds on our behalf — bypasses Vercel outbound restrictions.
+"""
+import requests
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
+
+RSS2JSON_URL = "https://api.rss2json.com/v1/api.json"
 
 FEEDS = [
     {
         "source": "JobWebKenya",
-        "url": "https://www.jobwebkenya.com/feed/"
+        "rss_url": "https://www.jobwebkenya.com/feed/"
     },
     {
         "source": "Corporate Staffing",
-        "url": "https://www.corporatestaffing.co.ke/feed/"
+        "rss_url": "https://www.corporatestaffing.co.ke/feed/"
     },
     {
         "source": "Opportunities for Young Kenyans",
-        "url": "https://opportunitiesforyoungkenyans.co.ke/feed/"
+        "rss_url": "https://opportunitiesforyoungkenyans.co.ke/feed/"
+    },
+    {
+        "source": "Kenya Job",
+        "rss_url": "https://www.kenyajob.com/rss.xml"
     },
 ]
-
-
-def _fetch_feed_with_timeout(url, timeout=8):
-    try:
-        import requests
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-            "Accept": "application/rss+xml, application/xml, text/xml, */*",
-        }
-        resp = requests.get(url, headers=headers, timeout=timeout, allow_redirects=True)
-        resp.raise_for_status()
-        return feedparser.parse(resp.content)
-    except Exception:
-        return None
-
-
-def _parse_date(entry):
-    for attr in ("published", "updated", "created"):
-        val = getattr(entry, attr, None)
-        if val:
-            try:
-                return dateparser.parse(val)
-            except Exception:
-                continue
-    if hasattr(entry, "published_parsed") and entry.published_parsed:
-        try:
-            return datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
-        except Exception:
-            pass
-    return None
-
-
-def _is_expired(entry):
-    pub_date = _parse_date(entry)
-    if not pub_date:
-        return False
-    now = datetime.now(timezone.utc)
-    if pub_date.tzinfo is None:
-        pub_date = pub_date.replace(tzinfo=timezone.utc)
-    return (now - pub_date).days > 30
 
 
 def _clean_html(text):
@@ -66,36 +35,70 @@ def _clean_html(text):
     return clean[:400]
 
 
+def _parse_date(date_str):
+    if not date_str:
+        return None
+    try:
+        return dateparser.parse(date_str)
+    except Exception:
+        return None
+
+
+def _is_expired(date_str):
+    pub_date = _parse_date(date_str)
+    if not pub_date:
+        return False
+    now = datetime.now(timezone.utc)
+    if pub_date.tzinfo is None:
+        pub_date = pub_date.replace(tzinfo=timezone.utc)
+    return (now - pub_date).days > 30
+
+
+def fetch_feed_via_proxy(rss_url):
+    """Fetch a feed through RSS2JSON proxy — avoids Vercel outbound blocking."""
+    try:
+        resp = requests.get(
+            RSS2JSON_URL,
+            params={"rss_url": rss_url, "count": 50},
+            timeout=10
+        )
+        data = resp.json()
+        if data.get("status") != "ok":
+            return []
+        return data.get("items", [])
+    except Exception:
+        return []
+
+
 def fetch_all_jobs():
     all_jobs = []
 
     for feed_info in FEEDS:
-        try:
-            feed = _fetch_feed_with_timeout(feed_info["url"], timeout=8)
-            if not feed or not feed.entries:
+        items = fetch_feed_via_proxy(feed_info["rss_url"])
+        for item in items:
+            pub_date_str = item.get("pubDate", "")
+            if _is_expired(pub_date_str):
                 continue
-            for entry in feed.entries:
-                if _is_expired(entry):
-                    continue
-                title = entry.get("title", "").strip()
-                link = entry.get("link", "").strip()
-                summary = _clean_html(entry.get("summary", "") or entry.get("description", ""))
-                company = entry.get("author", "") or entry.get("dc_creator", "") or ""
-                pub_date = _parse_date(entry)
-                if not title or not link:
-                    continue
-                all_jobs.append({
-                    "title": title,
-                    "company": company,
-                    "link": link,
-                    "summary": summary,
-                    "source": feed_info["source"],
-                    "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
-                    "posted_raw": pub_date.isoformat() if pub_date else "",
-                    "match_reason": ""
-                })
-        except Exception:
-            continue
+
+            title = (item.get("title") or "").strip()
+            link = (item.get("link") or "").strip()
+            summary = _clean_html(item.get("description") or item.get("content") or "")
+            company = (item.get("author") or "").strip()
+            pub_date = _parse_date(pub_date_str)
+
+            if not title or not link:
+                continue
+
+            all_jobs.append({
+                "title": title,
+                "company": company,
+                "link": link,
+                "summary": summary,
+                "source": feed_info["source"],
+                "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
+                "posted_raw": pub_date.isoformat() if pub_date else "",
+                "match_reason": ""
+            })
 
     # Deduplicate
     seen = set()
@@ -108,7 +111,8 @@ def fetch_all_jobs():
     # Sort newest first
     def sort_key(job):
         try:
-            return dateparser.parse(job.get("posted", "")) or datetime.min.replace(tzinfo=timezone.utc)
+            d = dateparser.parse(job.get("posted", ""))
+            return d or datetime.min.replace(tzinfo=timezone.utc)
         except Exception:
             return datetime.min.replace(tzinfo=timezone.utc)
 

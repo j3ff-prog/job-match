@@ -48,14 +48,17 @@ def debug_feeds():
         ("Corporate Staffing", "https://www.corporatestaffing.co.ke/feed/"),
         ("OYK", "https://opportunitiesforyoungkenyans.co.ke/feed/"),
     ]
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "application/rss+xml, application/xml, text/xml, */*",
-    }
-    for name, url in feeds:
+    for name, rss_url in feeds:
         try:
-            resp = req.get(url, headers=headers, timeout=8, allow_redirects=True)
-            results[name] = f"OK — {len(resp.content)} bytes — status {resp.status_code}"
+            resp = req.get(
+                "https://api.rss2json.com/v1/api.json",
+                params={"rss_url": rss_url, "count": 5},
+                timeout=10
+            )
+            data = resp.json()
+            status = data.get("status")
+            count = len(data.get("items", []))
+            results[name] = f"{status} — {count} items"
         except Exception as e:
             results[name] = f"FAILED — {str(e)}"
     return jsonify(results)
