@@ -1,4 +1,4 @@
-"""
+""" 
 api/index.py — JobMatch Flask API for Vercel serverless.
 """
 import os
@@ -133,6 +133,5 @@ def match_jobs():
         "total_found": len(jobs),
         "message": f"Found {len(jobs)} matching jobs. Showing your top {len(ranked)} matches."
     })
-
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
