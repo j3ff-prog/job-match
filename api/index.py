@@ -45,24 +45,18 @@ def _verify_paystack(reference: str) -> bool:
 
 @app.route("/api/debug", methods=["GET"])
 def debug_feeds():
-    import requests as req
+    import feedparser
     results = {}
     feeds = [
         ("JobWebKenya", "https://www.jobwebkenya.com/feed/"),
         ("Corporate Staffing", "https://www.corporatestaffing.co.ke/feed/"),
         ("OYK", "https://opportunitiesforyoungkenyans.co.ke/feed/"),
     ]
-    for name, rss_url in feeds:
+    for name, url in feeds:
         try:
-            resp = req.get(
-                "https://api.rss2json.com/v1/api.json",
-                params={"rss_url": rss_url, "count": 5},
-                timeout=10
-            )
-            data = resp.json()
-            status = data.get("status")
-            count = len(data.get("items", []))
-            results[name] = f"{status} — {count} items"
+            feed = feedparser.parse(url)
+            count = len(feed.entries)
+            results[name] = f"OK — {count} items"
         except Exception as e:
             results[name] = f"FAILED — {str(e)}"
     return jsonify(results)
