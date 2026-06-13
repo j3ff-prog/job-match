@@ -4,7 +4,7 @@ api/index.py — JobMatch Flask API for Vercel serverless.
 import os
 import sys
 import requests as http_requests
-from flask import Flask, request, jsonify, Response
+from flask import Flask, request, jsonify, Response, send_from_directory
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -25,7 +25,11 @@ def add_cors(response):
 
 @app.route("/", methods=["GET"])
 def home():
-    return jsonify({"status": "JobMatch API is running"})
+    return send_from_directory(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "index.html")
+
+@app.route("/results", methods=["GET"])
+def results():
+    return send_from_directory(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "results.html")
 
 def _verify_paystack(reference: str) -> bool:
     secret_key = os.getenv("PAYSTACK_SECRET_KEY", "")
