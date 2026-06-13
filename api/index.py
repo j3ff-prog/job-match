@@ -23,6 +23,10 @@ def add_cors(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization"
     return response
 
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({"status": "JobMatch API is running"})
+
 def _verify_paystack(reference: str) -> bool:
     secret_key = os.getenv("PAYSTACK_SECRET_KEY", "")
     if not secret_key:
