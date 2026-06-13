@@ -1,4 +1,5 @@
 import requests
+import feedparser
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
 import os
@@ -6,7 +7,6 @@ import os
 ADZUNA_APP_ID  = os.getenv("ADZUNA_APP_ID", "37f1173d")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "94bac5cd4e13949bebadd4b8ccacf95e")
 
-RSS2JSON = "https://api.rss2json.com/v1/api.json"
 
 RSS_FEEDS = [
     {"source": "JobWebKenya", "url": "https://www.jobwebkenya.com/feed/"},
@@ -43,28 +43,21 @@ def _is_expired(date_str):
 
 def _fetch_rss(feed_info):
     try:
-        resp = requests.get(
-            RSS2JSON,
-            params={"rss_url": feed_info["url"], "count": 50},
-            timeout=10
-        )
-        data = resp.json()
-        if data.get("status") != "ok":
-            return []
+        feed = feedparser.parse(feed_info["url"])
         jobs = []
-        for item in data.get("items", []):
-            if _is_expired(item.get("pubDate", "")):
+        for item in feed.entries:
+            if _is_expired(getattr(item, "published", "")):
                 continue
-            title = (item.get("title") or "").strip()
-            link = (item.get("link") or "").strip()
+            title = (getattr(item, "title", "") or "").strip()
+            link = (getattr(item, "link", "") or "").strip()
             if not title or not link:
                 continue
-            pub_date = _parse_date(item.get("pubDate", ""))
+            pub_date = _parse_date(getattr(item, "published", ""))
             jobs.append({
                 "title": title,
-                "company": (item.get("author") or "").strip(),
+                "company": (getattr(item, "author", "") or "").strip(),
                 "link": link,
-                "summary": _clean_html(item.get("description") or ""),
+                "summary": _clean_html(getattr(item, "summary", "") or ""),
                 "source": feed_info["source"],
                 "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
                 "posted_raw": pub_date.isoformat() if pub_date else "",
