@@ -7,13 +7,22 @@ import os
 ADZUNA_APP_ID  = os.getenv("ADZUNA_APP_ID", "37f1173d")
 ADZUNA_APP_KEY = os.getenv("ADZUNA_APP_KEY", "94bac5cd4e13949bebadd4b8ccacf95e")
 
-
 RSS_FEEDS = [
     {"source": "JobWebKenya", "url": "https://www.jobwebkenya.com/feed/"},
     {"source": "Corporate Staffing", "url": "https://www.corporatestaffing.co.ke/feed/"},
+    {"source": "OYK", "url": "https://opportunitiesforyoungkenyans.co.ke/feed/"},
 ]
 
 DEFAULT_TERMS = ["kenya jobs", "nairobi jobs", "customer service kenya", "accountant kenya", "engineer kenya"]
+
+BLOG_KEYWORDS = [
+    "how to", "tips", "habits", "methods", "ways to", "guide", "advice",
+    "prepare for", "effective", "want to", "top 10", "top 5", "reasons why",
+    "mistakes", "skills you need", "what is", "why you should", "career advice",
+    "salary", "interview tips", "cv tips", "resume tips", "job search tips"
+]
+
+REMOTE_KEYWORDS = ["remote", "work from home", "wfh", "virtual", "online", "anywhere"]
 
 
 def _clean_html(text):
@@ -41,6 +50,16 @@ def _is_expired(date_str):
     return (now - d).days > 30
 
 
+def _is_blog_post(title):
+    title_lower = title.lower()
+    return any(kw in title_lower for kw in BLOG_KEYWORDS)
+
+
+def _is_remote(title, summary):
+    combined = (title + " " + summary).lower()
+    return any(kw in combined for kw in REMOTE_KEYWORDS)
+
+
 def _fetch_rss(feed_info):
     try:
         feed = feedparser.parse(feed_info["url"])
@@ -52,16 +71,15 @@ def _fetch_rss(feed_info):
             link = (getattr(item, "link", "") or "").strip()
             if not title or not link:
                 continue
-            # Filter out blog posts
-            skip_keywords = ["how to", "tips", "habits", "methods", "ways to", "guide", "advice", "prepare for", "effective", "want to"]
-            if any(kw in title.lower() for kw in skip_keywords):
+            if _is_blog_post(title):
                 continue
             pub_date = _parse_date(getattr(item, "published", ""))
+            summary = _clean_html(getattr(item, "summary", "") or "")
             jobs.append({
                 "title": title,
                 "company": (getattr(item, "author", "") or "").strip(),
                 "link": link,
-                "summary": _clean_html(getattr(item, "summary", "") or ""),
+                "summary": summary,
                 "source": feed_info["source"],
                 "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
                 "posted_raw": pub_date.isoformat() if pub_date else "",
@@ -72,14 +90,15 @@ def _fetch_rss(feed_info):
         return []
 
 
-def _fetch_adzuna(keyword, country="za", results=10):
+def _fetch_adzuna(keyword, results=10):
+    """Fetch remote-only jobs from Adzuna using GB market which has most remote listings."""
     try:
         resp = requests.get(
-            f"https://api.adzuna.com/v1/api/jobs/{country}/search/1",
+            "https://api.adzuna.com/v1/api/jobs/gb/search/1",
             params={
                 "app_id": ADZUNA_APP_ID,
                 "app_key": ADZUNA_APP_KEY,
-                "what": keyword,
+                "what": keyword + " remote",
                 "results_per_page": results,
                 "sort_by": "date",
             },
@@ -88,13 +107,18 @@ def _fetch_adzuna(keyword, country="za", results=10):
         data = resp.json()
         jobs = []
         for item in data.get("results", []):
+            title = item.get("title", "").strip()
+            summary = _clean_html(item.get("description", ""))
+            # Only include if truly remote
+            if not _is_remote(title, summary):
+                continue
             pub_date = _parse_date(item.get("created", ""))
             jobs.append({
-                "title": item.get("title", "").strip(),
+                "title": title,
                 "company": item.get("company", {}).get("display_name", ""),
                 "link": item.get("redirect_url", ""),
-                "summary": _clean_html(item.get("description", "")),
-                "source": "Adzuna",
+                "summary": summary,
+                "source": "Adzuna (Remote)",
                 "posted": pub_date.strftime("%d %b %Y") if pub_date else "Date unknown",
                 "posted_raw": pub_date.isoformat() if pub_date else "",
                 "match_reason": ""
@@ -105,21 +129,16 @@ def _fetch_adzuna(keyword, country="za", results=10):
 
 
 def fetch_all_jobs(keywords=None):
-    """
-    keywords: list of search terms extracted from CV.
-    Falls back to DEFAULT_TERMS if none provided.
-    """
     all_jobs = []
 
-    # RSS feeds — get everything, AI ranks later
+    # RSS feeds — Kenyan job boards
     for feed in RSS_FEEDS:
         all_jobs.extend(_fetch_rss(feed))
 
-    # Adzuna — use CV keywords if available, else defaults
+    # Adzuna — remote only
     search_terms = keywords if keywords else DEFAULT_TERMS
-    # Use top 5 keywords only to avoid quota burn
     for term in search_terms[:5]:
-        all_jobs.extend(_fetch_adzuna(term, country="za", results=5))
+        all_jobs.extend(_fetch_adzuna(term, results=5))
 
     # Deduplicate
     seen = set()
