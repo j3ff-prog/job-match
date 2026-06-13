@@ -52,6 +52,10 @@ def _fetch_rss(feed_info):
             link = (getattr(item, "link", "") or "").strip()
             if not title or not link:
                 continue
+            # Filter out blog posts
+            skip_keywords = ["how to", "tips", "habits", "methods", "ways to", "guide", "advice", "prepare for", "effective", "want to"]
+            if any(kw in title.lower() for kw in skip_keywords):
+                continue
             pub_date = _parse_date(getattr(item, "published", ""))
             jobs.append({
                 "title": title,
