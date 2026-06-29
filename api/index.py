@@ -141,7 +141,7 @@ def match_jobs():
     try:
         ranked = rank_jobs(cv_text, jobs)
     except Exception:
-        ranked = jobs[:15]
+        ranked = jobs
 
     return jsonify({
         "jobs": ranked,
